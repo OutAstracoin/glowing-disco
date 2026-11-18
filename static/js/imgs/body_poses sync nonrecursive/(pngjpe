@@ -1,0 +1,48 @@
+var map = {
+	"./image_00.png": 262,
+	"./image_01.png": 263,
+	"./image_02.png": 264,
+	"./image_03.png": 265,
+	"./image_04.png": 266,
+	"./image_05.png": 267,
+	"./image_06.png": 268,
+	"./image_07.png": 269,
+	"./image_08.png": 270,
+	"./image_09.png": 271,
+	"./image_10.png": 272,
+	"./image_11.png": 273,
+	"./image_12.png": 274,
+	"./image_13.png": 275,
+	"./image_14.png": 276,
+	"./image_15.png": 277,
+	"./image_16.png": 278,
+	"./image_17.png": 279,
+	"./image_18.png": 280,
+	"./image_19.png": 281,
+	"./image_20.png": 282,
+	"./image_21.png": 283,
+	"./image_22.png": 284,
+	"./image_23.png": 285,
+	"./image_24.png": 286
+};
+
+
+function webpackContext(req) {
+	var id = webpackContextResolve(req);
+	return __webpack_require__(id);
+}
+function webpackContextResolve(req) {
+	var id = map[req];
+	if(!(id + 1)) { // check for number or string
+		var e = new Error("Cannot find module '" + req + "'");
+		e.code = 'MODULE_NOT_FOUND';
+		throw e;
+	}
+	return id;
+}
+webpackContext.keys = function webpackContextKeys() {
+	return Object.keys(map);
+};
+webpackContext.resolve = webpackContextResolve;
+module.exports = webpackContext;
+webpackContext.id = 261;
