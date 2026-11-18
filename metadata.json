@@ -1,0 +1,8 @@
+{
+  "name": "Magic Poser",
+  "description": "3D character posing and lighting studio with articulated models, hand poses, hairstyles, and geometric props.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

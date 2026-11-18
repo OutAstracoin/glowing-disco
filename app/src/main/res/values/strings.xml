@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Magic Poser</string>
+    <string name="cd_preview_mode">Preview mode</string>
+    <string name="cd_undo">Undo</string>
+    <string name="cd_redo">Redo</string>
+    <string name="cd_add_object">Add object</string>
+    <string name="cd_toggle_settings">Toggle settings</string>
+    <string name="cd_view_settings">View settings</string>
+    <string name="cd_material_color">Material color</string>
+    <string name="cd_hair_style">Hairstyle</string>
+    <string name="cd_lock_object">Lock object</string>
+    <string name="cd_transform">Transform</string>
+    <string name="cd_toggle_manipulator">Rotate or translate gizmo</string>
+    <string name="cd_pose_presets">Pose presets</string>
+    <string name="cd_hand_poses">Hand poses</string>
+    <string name="cd_duplicate">Duplicate</string>
+    <string name="cd_replace_model">Replace model</string>
+    <string name="cd_remove">Remove</string>
+    <string name="cd_brightness">Light brightness</string>
+    <string name="cd_close_menu">Close menu</string>
+</resources>
