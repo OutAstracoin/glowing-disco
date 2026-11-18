@@ -12,11 +12,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.hypot
 
+class ViewportProjector {
+    @Volatile
+    var projectScreenToGround: ((Float, Float) -> com.example.model.Vec3)? = null
+}
+
 @SuppressLint("ClickableViewAccessibility")
 @Composable
 fun PoserGLView(
     renderSnapshot: StudioRenderSnapshot,
     modifier: Modifier = Modifier,
+    projector: ViewportProjector? = null,
+    onInitProgress: (Float) -> Unit = {},
     onTapHit: (PickHit) -> Unit,
     onOrbitCamera: (dx: Float, dy: Float) -> Unit,
     onZoomCamera: (scaleFactor: Float) -> Unit,
@@ -26,13 +33,17 @@ fun PoserGLView(
     onGizmoDragEnd: () -> Unit
 ) {
     val context = LocalContext.current
-    val renderer = remember { PoserGLRenderer() }
+    val renderer = remember { PoserGLRenderer(onInitProgress = onInitProgress) }
     val glView = remember {
         GLSurfaceView(context).apply {
             setEGLContextClientVersion(3)
             setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         }
+    }
+
+    LaunchedEffect(projector, renderer) {
+        projector?.projectScreenToGround = { sx, sy -> renderer.screenToGround(sx, sy) }
     }
 
     LaunchedEffect(renderSnapshot) {

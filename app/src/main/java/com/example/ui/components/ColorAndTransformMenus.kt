@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -38,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -46,8 +49,10 @@ import com.example.model.PosePresets
 import com.example.model.RgbColor
 import com.example.model.SelectedPart
 import com.example.model.Vec3
+import com.example.model.kelvinToRgb
 import com.example.ui.theme.StudioBorder
 import com.example.ui.theme.StudioCyan
+import com.example.ui.theme.StudioCyanContainer
 import com.example.ui.theme.StudioSurfaceSolid
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -61,21 +66,14 @@ fun TransformMenuContent(
     onPositionChange: (Vec3) -> Unit,
     onCharScaleChange: (Float) -> Unit,
     onPropScaleChange: (Vec3) -> Unit,
-    onCommitHistory: () -> Unit
+    onBeginHistory: (String) -> Unit,
+    onEndHistory: () -> Unit
 ) {
     val isProp = uiState.selectedPart == SelectedPart.MODEL
     val currentPos = if (isProp) {
         uiState.selectedProp?.position ?: Vec3()
     } else {
         uiState.selectedCharacter?.position ?: Vec3()
-    }
-
-    var historySaved by remember { mutableStateOf(false) }
-    fun ensureHistory() {
-        if (!historySaved) {
-            onCommitHistory()
-            historySaved = true
-        }
     }
 
     Column(
@@ -98,10 +96,10 @@ fun TransformMenuContent(
                     valueRange = -5f..5f,
                     testTag = "slider_move_x",
                     onValueChange = {
-                        ensureHistory()
+                        onBeginHistory(strings.move)
                         onPositionChange(currentPos.copy(x = it))
                     },
-                    onValueChangeFinished = { historySaved = false }
+                    onValueChangeFinished = onEndHistory
                 )
                 AxisSliderRow(
                     axisLabel = "Y",
@@ -109,10 +107,10 @@ fun TransformMenuContent(
                     valueRange = -3f..5f,
                     testTag = "slider_move_y",
                     onValueChange = {
-                        ensureHistory()
+                        onBeginHistory(strings.move)
                         onPositionChange(currentPos.copy(y = it))
                     },
-                    onValueChangeFinished = { historySaved = false }
+                    onValueChangeFinished = onEndHistory
                 )
                 AxisSliderRow(
                     axisLabel = "Z",
@@ -120,10 +118,10 @@ fun TransformMenuContent(
                     valueRange = -5f..5f,
                     testTag = "slider_move_z",
                     onValueChange = {
-                        ensureHistory()
+                        onBeginHistory(strings.move)
                         onPositionChange(currentPos.copy(z = it))
                     },
-                    onValueChangeFinished = { historySaved = false }
+                    onValueChangeFinished = onEndHistory
                 )
             }
         }
@@ -146,10 +144,10 @@ fun TransformMenuContent(
                         valueRange = 0.2f..3.5f,
                         testTag = "slider_scale_x",
                         onValueChange = {
-                            ensureHistory()
+                            onBeginHistory(strings.scale)
                             onPropScaleChange(propScale.copy(x = it))
                         },
-                        onValueChangeFinished = { historySaved = false }
+                        onValueChangeFinished = onEndHistory
                     )
                     AxisSliderRow(
                         axisLabel = "Y",
@@ -157,10 +155,10 @@ fun TransformMenuContent(
                         valueRange = 0.2f..3.5f,
                         testTag = "slider_scale_y",
                         onValueChange = {
-                            ensureHistory()
+                            onBeginHistory(strings.scale)
                             onPropScaleChange(propScale.copy(y = it))
                         },
-                        onValueChangeFinished = { historySaved = false }
+                        onValueChangeFinished = onEndHistory
                     )
                     AxisSliderRow(
                         axisLabel = "Z",
@@ -168,10 +166,10 @@ fun TransformMenuContent(
                         valueRange = 0.2f..3.5f,
                         testTag = "slider_scale_z",
                         onValueChange = {
-                            ensureHistory()
+                            onBeginHistory(strings.scale)
                             onPropScaleChange(propScale.copy(z = it))
                         },
-                        onValueChangeFinished = { historySaved = false }
+                        onValueChangeFinished = onEndHistory
                     )
                 } else {
                     val charScale = uiState.selectedCharacter?.scale ?: 1f
@@ -181,10 +179,10 @@ fun TransformMenuContent(
                         valueRange = 0.3f..2.5f,
                         testTag = "slider_scale_s",
                         onValueChange = {
-                            ensureHistory()
+                            onBeginHistory(strings.scale)
                             onCharScaleChange(it)
                         },
-                        onValueChangeFinished = { historySaved = false }
+                        onValueChangeFinished = onEndHistory
                     )
                 }
             }
@@ -192,75 +190,226 @@ fun TransformMenuContent(
     }
 }
 
-@Composable
-fun PerspectiveMenuContent(
-    fovDeg: Float,
-    strings: StudioStrings,
-    onFovChange: (Float) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SideMenuHeader(title = strings.perspectiveFov)
-        Surface(
-            color = StudioSurfaceSolid,
-            shape = RoundedCornerShape(10.dp),
-            border = BorderStroke(1.dp, StudioBorder)
-        ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-                AxisSliderRow(
-                    axisLabel = strings.fov,
-                    value = fovDeg,
-                    valueRange = 30f..90f,
-                    formatAsInt = true,
-                    testTag = "slider_perspective_fov",
-                    onValueChange = onFovChange,
-                    onValueChangeFinished = {}
-                )
-            }
-        }
-    }
-}
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BrightnessMenuContent(
     brightness: Float,
+    colorTemperatureK: Float,
     giStrength: Float,
+    azimuthDeg: Float,
+    elevationDeg: Float,
     strings: StudioStrings,
     onBrightnessChange: (Float) -> Unit,
-    onGiStrengthChange: (Float) -> Unit
+    onColorTempChange: (Float) -> Unit,
+    onColorTempPreset: (Float) -> Unit,
+    onGiStrengthChange: (Float) -> Unit,
+    onDirectionChange: (Float, Float) -> Unit,
+    onBeginHistory: (String) -> Unit,
+    onEndHistory: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SideMenuHeader(title = strings.brightnessTitle)
-        Surface(
-            color = StudioSurfaceSolid,
-            shape = RoundedCornerShape(10.dp),
-            border = BorderStroke(1.dp, StudioBorder)
-        ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-                AxisSliderRow(
-                    axisLabel = "L",
-                    value = brightness,
-                    valueRange = 0f..1f,
-                    testTag = "slider_brightness",
-                    onValueChange = onBrightnessChange,
-                    onValueChangeFinished = {}
-                )
-            }
-        }
+    val tintRgb = remember(colorTemperatureK) { kelvinToRgb(colorTemperatureK) }
+    val tintColor = Color(tintRgb.r, tintRgb.g, tintRgb.b)
 
-        SideMenuHeader(title = strings.giStrength)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.verticalScroll(rememberScrollState())
+    ) {
+        SideMenuHeader(title = strings.lighting)
+
+        // Intensity & GI Strength card
         Surface(
             color = StudioSurfaceSolid,
             shape = RoundedCornerShape(10.dp),
             border = BorderStroke(1.dp, StudioBorder)
         ) {
-            Column(modifier = Modifier.padding(10.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(10.dp)
+            ) {
+                Text(
+                    text = strings.intensity,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
+                AxisSliderRow(
+                    axisLabel = "Int",
+                    value = brightness,
+                    valueRange = 0f..1.5f,
+                    testTag = "slider_brightness",
+                    onValueChange = {
+                        onBeginHistory(strings.intensity)
+                        onBrightnessChange(it)
+                    },
+                    onValueChangeFinished = onEndHistory
+                )
+                Text(
+                    text = strings.giStrength,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
                 AxisSliderRow(
                     axisLabel = "GI",
                     value = giStrength,
                     valueRange = 0f..1f,
                     testTag = "slider_gi_strength",
-                    onValueChange = onGiStrengthChange,
-                    onValueChangeFinished = {}
+                    onValueChange = {
+                        onBeginHistory(strings.giStrength)
+                        onGiStrengthChange(it)
+                    },
+                    onValueChangeFinished = onEndHistory
+                )
+            }
+        }
+
+        // Color Temperature (K) card
+        Surface(
+            color = StudioSurfaceSolid,
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, StudioBorder)
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = strings.colorTemperature,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(tintColor)
+                                .border(1.dp, Color.White.copy(alpha = 0.6f), CircleShape)
+                        )
+                        Text(
+                            text = "${colorTemperatureK.roundToInt()}K",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                // Warm-to-cool Kelvin gradient indicator
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color(0xFFFF8A2B),
+                                    Color(0xFFFFD5A1),
+                                    Color(0xFFFFF8F2),
+                                    Color(0xFFD6E6FF),
+                                    Color(0xFFA7CAFF)
+                                )
+                            )
+                        )
+                )
+
+                Slider(
+                    value = colorTemperatureK.coerceIn(2000f, 10000f),
+                    onValueChange = {
+                        onBeginHistory(strings.colorTemperature)
+                        onColorTempChange(it)
+                    },
+                    onValueChangeFinished = onEndHistory,
+                    valueRange = 2000f..10000f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = tintColor,
+                        activeTrackColor = StudioCyan
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("slider_color_temp")
+                )
+
+                val presets = listOf(
+                    2700f to strings.warm,
+                    4500f to strings.soft,
+                    6500f to strings.daylight,
+                    9000f to strings.cool
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    presets.forEach { (kelvin, label) ->
+                        val isActive = kotlin.math.abs(colorTemperatureK - kelvin) < 250f
+                        OutlinedButton(
+                            onClick = { onColorTempPreset(kelvin) },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (isActive) StudioCyan else StudioBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (isActive) StudioCyanContainer else Color.Transparent,
+                                contentColor = if (isActive) StudioCyan else TextPrimary
+                            ),
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .testTag("temp_preset_${kelvin.roundToInt()}")
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Light Direction card
+        Surface(
+            color = StudioSurfaceSolid,
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, StudioBorder)
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(10.dp)
+            ) {
+                Text(
+                    text = strings.lightDirection,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
+                AxisSliderRow(
+                    axisLabel = strings.azimuth.take(3),
+                    value = azimuthDeg,
+                    valueRange = -180f..180f,
+                    formatAsInt = true,
+                    testTag = "slider_light_azimuth",
+                    onValueChange = {
+                        onBeginHistory(strings.lightDirection)
+                        onDirectionChange(it, elevationDeg)
+                    },
+                    onValueChangeFinished = onEndHistory
+                )
+                AxisSliderRow(
+                    axisLabel = strings.elevation.take(3),
+                    value = elevationDeg,
+                    valueRange = 5f..88f,
+                    formatAsInt = true,
+                    testTag = "slider_light_elevation",
+                    onValueChange = {
+                        onBeginHistory(strings.lightDirection)
+                        onDirectionChange(azimuthDeg, it)
+                    },
+                    onValueChangeFinished = onEndHistory
                 )
             }
         }
@@ -274,7 +423,9 @@ fun MaterialMenuContent(
     strings: StudioStrings,
     onToggleBodyHair: (Boolean) -> Unit,
     onColorChange: (RgbColor) -> Unit,
-    onCommitHistory: () -> Unit
+    onBeginHistory: (String) -> Unit,
+    onEndHistory: () -> Unit,
+    onCommitSwatchHistory: (String) -> Unit
 ) {
     val activeColor: RgbColor = when {
         uiState.selectedPart == SelectedPart.MODEL -> uiState.selectedProp?.color ?: RgbColor()
@@ -297,13 +448,9 @@ fun MaterialMenuContent(
     var hue by remember(activeColor) { mutableFloatStateOf(hsv[0]) }
     var sat by remember(activeColor) { mutableFloatStateOf(hsv[1]) }
     var valBright by remember(activeColor) { mutableFloatStateOf(hsv[2]) }
-    var historySaved by remember { mutableStateOf(false) }
 
     fun pushHsv(h: Float, s: Float, v: Float) {
-        if (!historySaved) {
-            onCommitHistory()
-            historySaved = true
-        }
+        onBeginHistory(strings.material)
         val argb = AndroidColor.HSVToColor(floatArrayOf(h, s, v))
         onColorChange(
             RgbColor(
@@ -399,7 +546,7 @@ fun MaterialMenuContent(
                         hue = it
                         pushHsv(hue, sat, valBright)
                     },
-                    onValueChangeFinished = { historySaved = false }
+                    onValueChangeFinished = onEndHistory
                 )
                 AxisSliderRow(
                     axisLabel = "S",
@@ -410,7 +557,7 @@ fun MaterialMenuContent(
                         sat = it
                         pushHsv(hue, sat, valBright)
                     },
-                    onValueChangeFinished = { historySaved = false }
+                    onValueChangeFinished = onEndHistory
                 )
                 AxisSliderRow(
                     axisLabel = "V",
@@ -421,7 +568,7 @@ fun MaterialMenuContent(
                         valBright = it
                         pushHsv(hue, sat, valBright)
                     },
-                    onValueChangeFinished = { historySaved = false }
+                    onValueChangeFinished = onEndHistory
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))
@@ -435,7 +582,8 @@ fun MaterialMenuContent(
                             color = swatch,
                             testTag = "swatch_color_$idx",
                             onClick = {
-                                onCommitHistory()
+                                onEndHistory()
+                                onCommitSwatchHistory(strings.material)
                                 onColorChange(swatch)
                             }
                         )
@@ -453,7 +601,8 @@ fun MaterialMenuContent(
                             color = swatch,
                             testTag = "swatch_skin_$idx",
                             onClick = {
-                                onCommitHistory()
+                                onEndHistory()
+                                onCommitSwatchHistory(strings.material)
                                 onColorChange(swatch)
                             }
                         )

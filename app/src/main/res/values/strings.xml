@@ -18,4 +18,11 @@
     <string name="cd_remove">Remove</string>
     <string name="cd_brightness">Light brightness</string>
     <string name="cd_close_menu">Close menu</string>
+    <string name="cd_joints">Joint sliders</string>
+    <string name="cd_placeholder_3d">3D placeholder viewer</string>
+    <string name="cd_quick_poses">Quick poses gallery</string>
+    <string name="cd_lighting">Scene lighting panel</string>
+    <string name="cd_props">Props drawer</string>
+    <string name="cd_body_shape">Body mesh shape presets</string>
+    <string name="cd_camera_controls">Camera controls panel</string>
 </resources>

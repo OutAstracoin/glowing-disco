@@ -276,6 +276,76 @@ object MeshGenerator {
         addTorus(0f, 0f, 0f, 0.42f, 0.14f, 36, 16, axis = 1)
     }.build()
 
+    fun chair(): MeshData = Builder().apply {
+        // Resting height 0.90 (-0.45 to +0.45), backrest on -Z so seated characters face +Z
+        // Seat cushion at y = -0.02
+        addBox(0f, -0.01f, 0.02f, 0.48f, 0.06f, 0.46f)
+        // Four tapered legs from floor (-0.45) to seat (-0.04)
+        addTaperedLimb(-0.19f, -0.45f, -0.17f, -0.18f, -0.03f, -0.16f, 0.022f, 0.028f, 10)
+        addTaperedLimb(0.19f, -0.45f, -0.17f, 0.18f, -0.03f, -0.16f, 0.022f, 0.028f, 10)
+        addTaperedLimb(-0.19f, -0.45f, 0.20f, -0.18f, -0.03f, 0.19f, 0.022f, 0.028f, 10)
+        addTaperedLimb(0.19f, -0.45f, 0.20f, 0.18f, -0.03f, 0.19f, 0.022f, 0.028f, 10)
+        // Backrest uprights + curved top rail
+        addTaperedLimb(-0.18f, 0.02f, -0.18f, -0.19f, 0.44f, -0.22f, 0.024f, 0.020f, 10)
+        addTaperedLimb(0.18f, 0.02f, -0.18f, 0.19f, 0.44f, -0.22f, 0.024f, 0.020f, 10)
+        addBox(0f, 0.30f, -0.205f, 0.44f, 0.24f, 0.05f)
+    }.build()
+
+    fun stool(): MeshData = Builder().apply {
+        // Total height 0.72 (-0.36 to +0.36)
+        addTaperedLimb(0f, 0.26f, 0f, 0f, 0.36f, 0f, 0.21f, 0.20f, 24)
+        // 4 splayed legs
+        addTaperedLimb(-0.19f, -0.36f, -0.19f, -0.11f, 0.27f, -0.11f, 0.020f, 0.024f, 10)
+        addTaperedLimb(0.19f, -0.36f, -0.19f, 0.11f, 0.27f, -0.11f, 0.020f, 0.024f, 10)
+        addTaperedLimb(-0.19f, -0.36f, 0.19f, -0.11f, 0.27f, 0.11f, 0.020f, 0.024f, 10)
+        addTaperedLimb(0.19f, -0.36f, 0.19f, 0.11f, 0.27f, 0.11f, 0.020f, 0.024f, 10)
+        // Footrest ring
+        addTorus(0f, -0.14f, 0f, 0.155f, 0.015f, 24, 10, axis = 1)
+    }.build()
+
+    fun table(): MeshData = Builder().apply {
+        // Total height 0.76 (-0.38 to +0.38)
+        addBox(0f, 0.34f, 0f, 1.06f, 0.065f, 0.68f)
+        addBox(0f, 0.29f, 0f, 0.94f, 0.045f, 0.56f)
+        // Four corner legs
+        addTaperedLimb(-0.44f, -0.38f, -0.25f, -0.44f, 0.30f, -0.25f, 0.024f, 0.032f, 10)
+        addTaperedLimb(0.44f, -0.38f, -0.25f, 0.44f, 0.30f, -0.25f, 0.024f, 0.032f, 10)
+        addTaperedLimb(-0.44f, -0.38f, 0.25f, -0.44f, 0.30f, 0.25f, 0.024f, 0.032f, 10)
+        addTaperedLimb(0.44f, -0.38f, 0.25f, 0.44f, 0.30f, 0.25f, 0.024f, 0.032f, 10)
+    }.build()
+
+    fun sofa(): MeshData = Builder().apply {
+        // Total height 0.80 (-0.40 to +0.40), width 1.28, backrest at -Z
+        // Lower plinth + 4 short feet
+        addBox(0f, -0.24f, 0.02f, 1.24f, 0.18f, 0.68f)
+        addBox(-0.54f, -0.365f, -0.26f, 0.08f, 0.07f, 0.08f)
+        addBox(0.54f, -0.365f, -0.26f, 0.08f, 0.07f, 0.08f)
+        addBox(-0.54f, -0.365f, 0.28f, 0.08f, 0.07f, 0.08f)
+        addBox(0.54f, -0.365f, 0.28f, 0.08f, 0.07f, 0.08f)
+        // Two plush seat cushions
+        addBox(-0.27f, -0.07f, 0.05f, 0.51f, 0.16f, 0.58f)
+        addBox(0.27f, -0.07f, 0.05f, 0.51f, 0.16f, 0.58f)
+        // Backrest + armrests
+        addBox(0f, 0.17f, -0.24f, 1.24f, 0.44f, 0.18f)
+        addBox(-0.56f, 0.02f, 0.02f, 0.14f, 0.34f, 0.66f)
+        addBox(0.56f, 0.02f, 0.02f, 0.14f, 0.34f, 0.66f)
+    }.build()
+
+    fun lamp(): MeshData = Builder().apply {
+        // Total height 1.56 (-0.78 to +0.78)
+        addTaperedLimb(0f, -0.78f, 0f, 0f, -0.73f, 0f, 0.20f, 0.18f, 24)
+        addTaperedLimb(0f, -0.74f, 0f, 0f, 0.50f, 0f, 0.020f, 0.016f, 12)
+        // Conical shade
+        addTaperedLimb(0f, 0.44f, 0f, 0f, 0.78f, 0f, 0.24f, 0.11f, 24)
+    }.build()
+
+    fun pedestal(): MeshData = Builder().apply {
+        // Total height 0.90 (-0.45 to +0.45)
+        addBox(0f, -0.39f, 0f, 0.58f, 0.12f, 0.58f)
+        addBox(0f, 0f, 0f, 0.42f, 0.68f, 0.42f)
+        addBox(0f, 0.39f, 0f, 0.56f, 0.12f, 0.56f)
+    }.build()
+
     fun headSculpt(): MeshData = Builder().apply {
         // Cranium
         addEllipsoid(0f, 0.11f, -0.01f, 0.088f, 0.105f, 0.095f, 16, 22)
@@ -381,5 +451,57 @@ object MeshGenerator {
 
     fun taperedSegment(r0: Float, r1: Float, length: Float): MeshData = Builder().apply {
         addTaperedLimb(0f, 0f, 0f, 0f, length, 0f, r0, r1, 14)
+    }.build()
+
+    fun limbCapsule(): MeshData = Builder().apply {
+        // Normalized unit height (-0.5..+0.5) & unit diameter (~1.0 at muscle belly)
+        // Fuller proximal belly (+Y side) tapering smoothly toward distal joint (-Y side)
+        addTaperedLimb(0f, -0.5f, 0f, 0f, -0.10f, 0f, 0.34f, 0.50f, 14)
+        addTaperedLimb(0f, -0.10f, 0f, 0f, 0.25f, 0f, 0.50f, 0.48f, 14)
+        addTaperedLimb(0f, 0.25f, 0f, 0f, 0.5f, 0f, 0.48f, 0.38f, 14)
+    }.build()
+
+    fun torsoWedge(): MeshData = Builder().apply {
+        // Faceted planar wedge normalized inside -0.5..+0.5 cube; wider & deeper at +Y
+        val segs = 4
+        val yBot = -0.5f
+        val yTop = 0.5f
+        // Custom 8-corner flat-shaded tapered prism (rotated 45 deg or axis-aligned)
+        val bx = 0.38f; val bz = 0.40f
+        val tx = 0.56f; val tz = 0.52f
+        val p = arrayOf(
+            Triple(-bx, yBot, bz), Triple(bx, yBot, bz), Triple(tx, yTop, tz), Triple(-tx, yTop, tz), // front
+            Triple(bx, yBot, -bz), Triple(-bx, yBot, -bz), Triple(-tx, yTop, -tz), Triple(tx, yTop, -tz) // back
+        )
+        fun quad(a: Triple<Float, Float, Float>, b: Triple<Float, Float, Float>, c: Triple<Float, Float, Float>, d: Triple<Float, Float, Float>) {
+            val ux = b.first - a.first; val uy = b.second - a.second; val uz = b.third - a.third
+            val vx = c.first - a.first; val vy = c.second - a.second; val vz = c.third - a.third
+            val nx = uy * vz - uz * vy
+            val ny = uz * vx - ux * vz
+            val nz = ux * vy - uy * vx
+            val i0 = addVertex(a.first, a.second, a.third, nx, ny, nz)
+            val i1 = addVertex(b.first, b.second, b.third, nx, ny, nz)
+            val i2 = addVertex(c.first, c.second, c.third, nx, ny, nz)
+            val i3 = addVertex(d.first, d.second, d.third, nx, ny, nz)
+            addQuad(i0, i1, i2, i3)
+        }
+        // Front (+Z), Back (-Z), Right (+X), Left (-X), Top (+Y), Bottom (-Y)
+        quad(p[0], p[1], p[2], p[3])
+        quad(p[4], p[5], p[6], p[7])
+        quad(p[1], p[4], p[7], p[2])
+        quad(p[5], p[0], p[3], p[6])
+        quad(p[3], p[2], p[7], p[6])
+        quad(p[5], p[4], p[1], p[0])
+        if (segs < 0) Unit
+    }.build()
+
+    fun planarHead(): MeshData = Builder().apply {
+        // Loomis-inspired planar faceted head for clear light/shadow planes
+        addBox(0f, 0.125f, -0.008f, 0.165f, 0.175f, 0.175f)
+        // Chiseled jaw block
+        addBox(0f, 0.042f, 0.024f, 0.115f, 0.085f, 0.120f)
+        // Brow ridge + nose plane for clear facing direction
+        addBox(0f, 0.135f, 0.082f, 0.135f, 0.028f, 0.024f)
+        addBox(0f, 0.085f, 0.092f, 0.024f, 0.048f, 0.022f)
     }.build()
 }

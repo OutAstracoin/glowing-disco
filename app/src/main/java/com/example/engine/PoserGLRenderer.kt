@@ -3,6 +3,7 @@ package com.example.engine
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
+import com.example.model.CameraProjection
 import com.example.model.CameraSettings
 import com.example.model.CharacterEntity
 import com.example.model.HairStyle
@@ -14,6 +15,7 @@ import com.example.model.PropType
 import com.example.model.RgbColor
 import com.example.model.SelectedPart
 import com.example.model.Vec3
+import com.example.model.kelvinToRgb
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -23,6 +25,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.tan
 
 data class StudioRenderSnapshot(
     val characters: List<CharacterEntity> = emptyList(),
@@ -99,7 +102,9 @@ private class GpuMesh(data: MeshData) {
     }
 }
 
-class PoserGLRenderer : GLSurfaceView.Renderer {
+class PoserGLRenderer(
+    private val onInitProgress: (Float) -> Unit = {}
+) : GLSurfaceView.Renderer {
 
     @Volatile
     var snapshot: StudioRenderSnapshot = StudioRenderSnapshot()
@@ -132,6 +137,7 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
     private var uLightDirLoc = 0
     private var uCamPosLoc = 0
     private var uBrightnessLoc = 0
+    private var uLightColorLoc = 0
     private var uGiLoc = 0
     private var uUnlitLoc = 0
     private var uHighlightLoc = 0
@@ -144,6 +150,7 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
 
         mainProgram = buildProgram(VERTEX_SHADER, FRAGMENT_SHADER)
         skyProgram = buildProgram(SKY_VERTEX_SHADER, SKY_FRAGMENT_SHADER)
+        onInitProgress(0.25f)
 
         uMvpLoc = GLES30.glGetUniformLocation(mainProgram, "uMVP")
         uModelLoc = GLES30.glGetUniformLocation(mainProgram, "uModel")
@@ -151,6 +158,7 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
         uLightDirLoc = GLES30.glGetUniformLocation(mainProgram, "uLightDir")
         uCamPosLoc = GLES30.glGetUniformLocation(mainProgram, "uCamPos")
         uBrightnessLoc = GLES30.glGetUniformLocation(mainProgram, "uBrightness")
+        uLightColorLoc = GLES30.glGetUniformLocation(mainProgram, "uLightColor")
         uGiLoc = GLES30.glGetUniformLocation(mainProgram, "uGI")
         uUnlitLoc = GLES30.glGetUniformLocation(mainProgram, "uUnlit")
         uHighlightLoc = GLES30.glGetUniformLocation(mainProgram, "uHighlight")
@@ -165,13 +173,24 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
         meshCache[RenderMeshKey.STAIRS] = GpuMesh(MeshGenerator.stairs())
         meshCache[RenderMeshKey.TORUS] = GpuMesh(MeshGenerator.torus())
         meshCache[RenderMeshKey.WALL] = GpuMesh(MeshGenerator.wall())
+        meshCache[RenderMeshKey.CHAIR] = GpuMesh(MeshGenerator.chair())
+        meshCache[RenderMeshKey.STOOL] = GpuMesh(MeshGenerator.stool())
+        meshCache[RenderMeshKey.TABLE] = GpuMesh(MeshGenerator.table())
+        meshCache[RenderMeshKey.SOFA] = GpuMesh(MeshGenerator.sofa())
+        meshCache[RenderMeshKey.LAMP] = GpuMesh(MeshGenerator.lamp())
+        meshCache[RenderMeshKey.PEDESTAL] = GpuMesh(MeshGenerator.pedestal())
         meshCache[RenderMeshKey.HEAD] = GpuMesh(MeshGenerator.headSculpt())
+        meshCache[RenderMeshKey.PLANAR_HEAD] = GpuMesh(MeshGenerator.planarHead())
+        meshCache[RenderMeshKey.LIMB_CAPSULE] = GpuMesh(MeshGenerator.limbCapsule())
+        meshCache[RenderMeshKey.TORSO_WEDGE] = GpuMesh(MeshGenerator.torsoWedge())
+        onInitProgress(0.55f)
 
         HairStyle.entries.forEach { style ->
             if (style != HairStyle.NAKED) {
                 hairCache[style] = GpuMesh(MeshGenerator.hairMesh(style))
             }
         }
+        onInitProgress(0.85f)
 
         gridMesh = GpuMesh(MeshGenerator.gridLines(6))
         for (axis in 0..2) {
@@ -182,6 +201,7 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
         val vaos = IntArray(1)
         GLES30.glGenVertexArrays(1, vaos, 0)
         skyVao = vaos[0]
+        onInitProgress(1.0f)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -223,15 +243,24 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
             up.x, up.y, up.z
         )
         val aspect = viewWidth.toFloat() / viewHeight.toFloat()
-        Matrix.perspectiveM(projMatrix, 0, state.camera.fovDeg, aspect, 0.1f, 100f)
+        if (state.camera.projection == CameraProjection.ORTHOGRAPHIC) {
+            val halfH = (state.camera.distance * tan((state.camera.fovDeg * 0.5f * PI.toFloat() / 180f).toDouble()).toFloat())
+                .coerceIn(0.45f, 8.0f)
+            val halfW = halfH * aspect
+            Matrix.orthoM(projMatrix, 0, -halfW, halfW, -halfH, halfH, -25f, 80f)
+        } else {
+            Matrix.perspectiveM(projMatrix, 0, state.camera.fovDeg, aspect, 0.1f, 100f)
+        }
         Matrix.multiplyMM(viewProjMatrix, 0, projMatrix, 0, viewMatrix, 0)
         lastViewProj = viewProjMatrix.copyOf()
 
         GLES30.glUseProgram(mainProgram)
         val lightDir = computeLightDirection(state.light)
+        val lightColor = kelvinToRgb(state.light.colorTemperatureK)
         GLES30.glUniform3f(uLightDirLoc, lightDir.x, lightDir.y, lightDir.z)
         GLES30.glUniform3f(uCamPosLoc, camPos.x, camPos.y, camPos.z)
         GLES30.glUniform1f(uBrightnessLoc, state.light.brightness)
+        GLES30.glUniform3f(uLightColorLoc, lightColor.r, lightColor.g, lightColor.b)
         GLES30.glUniform1f(uGiLoc, state.light.giStrength)
 
         // Draw Ground Grid
@@ -319,7 +348,15 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
             val isLightSel = state.selectedPart == SelectedPart.LIGHT
             var lm = Math3D.translate(Math3D.identity(), lightPos.x, lightPos.y, lightPos.z)
             lm = Math3D.scale(lm, 0.22f, 0.22f, 0.22f)
-            val sunColor = if (isLightSel) RgbColor(1.0f, 0.90f, 0.35f) else RgbColor(1.0f, 0.78f, 0.28f)
+            val sunColor = if (isLightSel) {
+                RgbColor(
+                    (lightColor.r * 0.7f + 0.3f).coerceIn(0f, 1f),
+                    (lightColor.g * 0.7f + 0.3f).coerceIn(0f, 1f),
+                    (lightColor.b * 0.7f + 0.3f).coerceIn(0f, 1f)
+                )
+            } else {
+                lightColor
+            }
             drawMeshUnlit(meshCache[RenderMeshKey.SPHERE], lm, sunColor)
             if (isLightSel) {
                 activeGizmoPos = lightPos
@@ -454,6 +491,23 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
     fun getLastViewProj(): FloatArray = lastViewProj
     fun getViewSize(): Pair<Float, Float> = viewWidth.toFloat() to viewHeight.toFloat()
 
+    fun screenToGround(screenX: Float, screenY: Float): Vec3 {
+        val ray = Math3D.screenToRay(screenX, screenY, viewWidth.toFloat(), viewHeight.toFloat(), lastViewProj)
+        if (ray != null && kotlin.math.abs(ray.dir.y) > 1e-4f) {
+            val t = -ray.origin.y / ray.dir.y
+            if (t > 0.1f && t < 65f) {
+                val hit = ray.origin + ray.dir * t
+                return Vec3(
+                    hit.x.coerceIn(-4.2f, 4.2f),
+                    0f,
+                    hit.z.coerceIn(-4.2f, 4.2f)
+                )
+            }
+        }
+        val camTarget = snapshot.camera.target
+        return Vec3(camTarget.x.coerceIn(-3f, 3f), 0f, camTarget.z.coerceIn(-3f, 3f))
+    }
+
     fun resolveSelectedGizmoOrigin(state: StudioRenderSnapshot = snapshot): Pair<Vec3, FloatArray>? {
         when (state.selectedPart) {
             SelectedPart.LIGHT -> {
@@ -522,11 +576,23 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
             PropType.STAIRS -> RenderMeshKey.STAIRS
             PropType.TORUS -> RenderMeshKey.TORUS
             PropType.WALL -> RenderMeshKey.WALL
+            PropType.CHAIR -> RenderMeshKey.CHAIR
+            PropType.STOOL -> RenderMeshKey.STOOL
+            PropType.TABLE -> RenderMeshKey.TABLE
+            PropType.SOFA -> RenderMeshKey.SOFA
+            PropType.LAMP -> RenderMeshKey.LAMP
+            PropType.PEDESTAL -> RenderMeshKey.PEDESTAL
         }
 
         private fun propHalfExtents(type: PropType): Vec3 = when (type) {
             PropType.RECTANGLE -> Vec3(0.65f, 0.4f, 0.15f)
             PropType.WALL -> Vec3(0.95f, 0.95f, 0.15f)
+            PropType.CHAIR -> Vec3(0.28f, 0.48f, 0.28f)
+            PropType.STOOL -> Vec3(0.24f, 0.38f, 0.24f)
+            PropType.TABLE -> Vec3(0.55f, 0.40f, 0.36f)
+            PropType.SOFA -> Vec3(0.66f, 0.42f, 0.38f)
+            PropType.LAMP -> Vec3(0.26f, 0.80f, 0.26f)
+            PropType.PEDESTAL -> Vec3(0.32f, 0.48f, 0.32f)
             else -> Vec3(0.55f, 0.55f, 0.55f)
         }
 
@@ -570,6 +636,7 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
             uniform vec3 uLightDir;
             uniform vec3 uCamPos;
             uniform float uBrightness;
+            uniform vec3 uLightColor;
             uniform float uGI;
             uniform float uUnlit;
             uniform float uHighlight;
@@ -586,14 +653,15 @@ class PoserGLRenderer : GLSurfaceView.Renderer {
 
                 float ndl = max(dot(N, L), 0.0);
                 float hemi = 0.5 + 0.5 * N.y;
-                vec3 giSky = vec3(0.75, 0.85, 0.98);
-                vec3 giGround = vec3(0.28, 0.24, 0.22);
-                vec3 ambient = mix(giGround, giSky, hemi) * (0.25 + 0.65 * uGI);
+                vec3 giSky = vec3(0.75, 0.85, 0.98) * mix(vec3(1.0), uLightColor, 0.32);
+                vec3 giGround = vec3(0.28, 0.24, 0.22) * mix(vec3(1.0), uLightColor, 0.20);
+                vec3 ambient = mix(giGround, giSky, hemi) * (0.20 + 0.65 * uGI);
 
-                float spec = pow(max(dot(N, H), 0.0), 36.0) * 0.22 * uBrightness;
-                float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.14;
+                vec3 directDiffuse = ndl * (1.15 * uBrightness) * uLightColor;
+                vec3 spec = vec3(pow(max(dot(N, H), 0.0), 36.0) * 0.26 * uBrightness) * uLightColor;
+                vec3 rim = vec3(pow(1.0 - max(dot(N, V), 0.0), 3.0) * (0.06 + 0.10 * uBrightness)) * mix(vec3(1.0), uLightColor, 0.5);
 
-                vec3 lit = uColor * (ambient + ndl * (0.35 + 0.95 * uBrightness)) + vec3(spec + rim);
+                vec3 lit = uColor * (ambient + directDiffuse) + spec + rim;
                 vec3 finalCol = mix(lit, vec3(0.30, 0.85, 0.92), uHighlight * 0.22);
                 fragColor = vec4(clamp(finalCol, 0.0, 1.0), 1.0);
             }

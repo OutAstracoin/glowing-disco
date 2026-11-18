@@ -19,26 +19,51 @@ enum class ManipulatorMode {
     ROTATE
 }
 
+enum class CameraProjection {
+    PERSPECTIVE,
+    ORTHOGRAPHIC
+}
+
 enum class CameraPreset {
     LEFT,
     RIGHT,
     BOTTOM,
     TOP,
     FRONT,
-    BACK
+    BACK,
+    ISOMETRIC
 }
 
 enum class SideMenu {
     NONE,
     ADD_MENU,
+    PROPS_MENU,
     POSE_PRESET_MENU,
+    BODY_SHAPE_MENU,
     HAND_MENU,
     SWAP_MODEL_MENU,
     TRANSFORM_MENU,
-    PERSPECTIVE_MENU,
+    CAMERA_MENU,
     BRIGHTNESS_MENU,
     MATERIAL_MENU,
-    HAIR_MENU
+    HAIR_MENU,
+    JOINT_MENU
+}
+
+enum class BodyMeshStyle(val key: String) {
+    ORGANIC("organic"),
+    PLANAR("planar"),
+    CYLINDRICAL("cylindrical"),
+    SCULPTED("sculpted"),
+    ROBOTIC("robotic");
+
+    fun label(s: StudioStrings): String = when (this) {
+        ORGANIC -> s.meshOrganic
+        PLANAR -> s.meshPlanar
+        CYLINDRICAL -> s.meshCylindrical
+        SCULPTED -> s.meshSculpted
+        ROBOTIC -> s.meshRobotic
+    }
 }
 
 data class BodyProportions(
@@ -49,6 +74,27 @@ data class BodyProportions(
     val limbThickness: Float,
     val chestDepth: Float
 )
+
+data class BodyShapePreset(
+    val id: String,
+    val meshStyle: BodyMeshStyle,
+    val proportions: BodyProportions,
+    val accentHex: Long
+) {
+    fun label(s: StudioStrings): String = when (id) {
+        "organic_standard" -> s.shapeNatural
+        "planar_bridgman" -> s.shapePlanarBridgman
+        "wooden_cylinder" -> s.shapeLayFigure
+        "sculpted_heroic" -> s.shapeHeroic
+        "robotic_mecha" -> s.shapeMecha
+        "organic_curvy" -> s.shapeCurvy
+        "sculpted_slender" -> s.shapeSlender
+        "planar_heavy" -> s.shapeHeavy
+        "organic_chibi" -> s.shapeChibi
+        "cylindrical_petite" -> s.shapePetite
+        else -> id
+    }
+}
 
 enum class CharacterType(
     val key: String,
@@ -96,20 +142,34 @@ enum class CharacterType(
     }
 }
 
+enum class PropCategory {
+    SHAPE,
+    FURNITURE
+}
+
 enum class PropType(
     val key: String,
-    val assetPath: String
+    val assetPath: String,
+    val category: PropCategory,
+    val restingY: Float,
+    val defaultColor: RgbColor
 ) {
-    SPHERE("sphere", "imgs/geometries/sphere_prop.png"),
-    CUBE("cube_prop", "imgs/geometries/cube_prop.png"),
-    CONE("cone_prop", "imgs/geometries/cone_prop.png"),
-    CYLINDER("cylinder_prop", "imgs/geometries/cylinder_prop.png"),
-    HEX("hex_prop", "imgs/geometries/hex_prop.png"),
-    PYRAMID("pyramid_prop", "imgs/geometries/pyramid_prop.png"),
-    RECTANGLE("rectangle_prop", "imgs/geometries/rectangle_prop.png"),
-    STAIRS("stairs_prop", "imgs/geometries/stairs_prop.jpg"),
-    TORUS("torus_prop", "imgs/geometries/torus_prop.jpg"),
-    WALL("wall_prop", "imgs/geometries/wall_prop.jpg");
+    SPHERE("sphere", "imgs/geometries/sphere_prop.png", PropCategory.SHAPE, 0.5f, RgbColor(0.78f, 0.82f, 0.88f)),
+    CUBE("cube_prop", "imgs/geometries/cube_prop.png", PropCategory.SHAPE, 0.5f, RgbColor(0.78f, 0.82f, 0.88f)),
+    CONE("cone_prop", "imgs/geometries/cone_prop.png", PropCategory.SHAPE, 0.5f, RgbColor(0.78f, 0.82f, 0.88f)),
+    CYLINDER("cylinder_prop", "imgs/geometries/cylinder_prop.png", PropCategory.SHAPE, 0.5f, RgbColor(0.78f, 0.82f, 0.88f)),
+    HEX("hex_prop", "imgs/geometries/hex_prop.png", PropCategory.SHAPE, 0.45f, RgbColor(0.78f, 0.82f, 0.88f)),
+    PYRAMID("pyramid_prop", "imgs/geometries/pyramid_prop.png", PropCategory.SHAPE, 0.5f, RgbColor(0.78f, 0.82f, 0.88f)),
+    RECTANGLE("rectangle_prop", "imgs/geometries/rectangle_prop.png", PropCategory.SHAPE, 0.35f, RgbColor(0.78f, 0.82f, 0.88f)),
+    STAIRS("stairs_prop", "imgs/geometries/stairs_prop.jpg", PropCategory.SHAPE, 0.5f, RgbColor(0.78f, 0.82f, 0.88f)),
+    TORUS("torus_prop", "imgs/geometries/torus_prop.jpg", PropCategory.SHAPE, 0.14f, RgbColor(0.78f, 0.82f, 0.88f)),
+    WALL("wall_prop", "imgs/geometries/wall_prop.jpg", PropCategory.SHAPE, 0.9f, RgbColor(0.78f, 0.82f, 0.88f)),
+    CHAIR("chair_furniture", "", PropCategory.FURNITURE, 0.45f, RgbColor(0.68f, 0.50f, 0.36f)),
+    STOOL("stool_furniture", "", PropCategory.FURNITURE, 0.36f, RgbColor(0.76f, 0.60f, 0.42f)),
+    TABLE("table_furniture", "", PropCategory.FURNITURE, 0.38f, RgbColor(0.72f, 0.56f, 0.40f)),
+    SOFA("sofa_furniture", "", PropCategory.FURNITURE, 0.40f, RgbColor(0.32f, 0.48f, 0.58f)),
+    LAMP("lamp_furniture", "", PropCategory.FURNITURE, 0.78f, RgbColor(0.86f, 0.76f, 0.56f)),
+    PEDESTAL("pedestal_furniture", "", PropCategory.FURNITURE, 0.45f, RgbColor(0.82f, 0.80f, 0.76f));
 
     fun label(s: StudioStrings): String = when (this) {
         SPHERE -> s.sphere
@@ -122,6 +182,12 @@ enum class PropType(
         STAIRS -> s.stairs
         TORUS -> s.torus
         WALL -> s.wall
+        CHAIR -> s.chair
+        STOOL -> s.stool
+        TABLE -> s.table
+        SOFA -> s.sofa
+        LAMP -> s.lamp
+        PEDESTAL -> s.pedestal
     }
 }
 

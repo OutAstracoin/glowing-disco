@@ -1,5 +1,6 @@
 package com.example.engine
 
+import com.example.model.BodyMeshStyle
 import com.example.model.CharacterEntity
 import com.example.model.HairStyle
 import com.example.model.HandFingerState
@@ -19,8 +20,16 @@ enum class RenderMeshKey {
     STAIRS,
     TORUS,
     WALL,
+    CHAIR,
+    STOOL,
+    TABLE,
+    SOFA,
+    LAMP,
+    PEDESTAL,
     HEAD,
-    LIMB_CAPSULE
+    PLANAR_HEAD,
+    LIMB_CAPSULE,
+    TORSO_WEDGE
 }
 
 data class RenderItem(
@@ -70,7 +79,39 @@ object SkeletonBuilder {
         val picks = ArrayList<PickBoneVolume>(32)
         val jointMats = HashMap<JointId, FloatArray>(20)
 
-        val p = ch.type.proportions
+        val p = ch.effectiveProportions
+        val meshStyle = ch.effectiveMeshStyle
+
+        val torsoMeshKey = when (meshStyle) {
+            BodyMeshStyle.ORGANIC -> RenderMeshKey.SPHERE
+            BodyMeshStyle.PLANAR -> RenderMeshKey.TORSO_WEDGE
+            BodyMeshStyle.CYLINDRICAL -> RenderMeshKey.CYLINDER
+            BodyMeshStyle.SCULPTED -> RenderMeshKey.TORSO_WEDGE
+            BodyMeshStyle.ROBOTIC -> RenderMeshKey.HEX
+        }
+        val pelvisMeshKey = when (meshStyle) {
+            BodyMeshStyle.ORGANIC -> RenderMeshKey.SPHERE
+            BodyMeshStyle.PLANAR -> RenderMeshKey.CUBE
+            BodyMeshStyle.CYLINDRICAL -> RenderMeshKey.CYLINDER
+            BodyMeshStyle.SCULPTED -> RenderMeshKey.LIMB_CAPSULE
+            BodyMeshStyle.ROBOTIC -> RenderMeshKey.HEX
+        }
+        val limbMeshKey = when (meshStyle) {
+            BodyMeshStyle.ORGANIC -> RenderMeshKey.SPHERE
+            BodyMeshStyle.PLANAR -> RenderMeshKey.CUBE
+            BodyMeshStyle.CYLINDRICAL -> RenderMeshKey.CYLINDER
+            BodyMeshStyle.SCULPTED -> RenderMeshKey.LIMB_CAPSULE
+            BodyMeshStyle.ROBOTIC -> RenderMeshKey.HEX
+        }
+        val jointMeshKey = when (meshStyle) {
+            BodyMeshStyle.PLANAR, BodyMeshStyle.ROBOTIC -> RenderMeshKey.CUBE
+            else -> RenderMeshKey.SPHERE
+        }
+        val headMeshKey = when (meshStyle) {
+            BodyMeshStyle.PLANAR, BodyMeshStyle.ROBOTIC -> RenderMeshKey.PLANAR_HEAD
+            else -> RenderMeshKey.HEAD
+        }
+
         val isCharSelected = (selectedEntityId == ch.id)
         val baseColor = ch.bodyColor
         val wearColor = if (showSportswear) {
@@ -100,16 +141,17 @@ object SkeletonBuilder {
             rx: Float,
             rz: Float,
             color: RgbColor,
-            highlighted: Boolean
+            highlighted: Boolean,
+            meshKey: RenderMeshKey
         ) {
             val m = Math3D.translate(jointMat, 0f, lenY * 0.5f, 0f)
             val scaled = Math3D.scale(m, rx * 2f, kotlin.math.abs(lenY), rz * 2f)
-            items.add(RenderItem(RenderMeshKey.SPHERE, null, scaled, color, highlighted))
+            items.add(RenderItem(meshKey, null, scaled, color, highlighted))
         }
 
         fun addJointBall(jointMat: FloatArray, radius: Float, highlighted: Boolean) {
             val scaled = Math3D.scale(jointMat, radius * 2f, radius * 2f, radius * 2f)
-            items.add(RenderItem(RenderMeshKey.SPHERE, null, scaled, jointBallColor, highlighted))
+            items.add(RenderItem(jointMeshKey, null, scaled, jointBallColor, highlighted))
         }
 
         fun isJointHighlighted(jointId: JointId, fallbackPart: SelectedPart? = null): Boolean {
@@ -128,49 +170,50 @@ object SkeletonBuilder {
 
         val legLenScale = p.heightScale
         val hipHeight = 0.88f * legLenScale + ch.pelvisOffsetY
+        val pickBulk = (0.72f + 0.28f * p.limbThickness)
 
         // Pelvis
         val pelvisMat = applyJoint(rootMat, Vec3(0f, hipHeight, 0f), JointId.PELVIS)
         val pelvisHighlight = isJointHighlighted(JointId.PELVIS)
-        addSegment(pelvisMat, 0.14f, 0.125f * p.hipWidth, 0.088f * p.chestDepth, wearColor, pelvisHighlight)
+        addSegment(pelvisMat, 0.14f, 0.125f * p.hipWidth, 0.088f * p.chestDepth, wearColor, pelvisHighlight, pelvisMeshKey)
         picks.add(
             PickBoneVolume(
                 ch.id, SelectedPart.SKEL_MODEL, JointId.PELVIS,
                 Math3D.transformPoint(pelvisMat, Vec3(0f, 0.07f, 0f)),
-                0.15f * ch.scale, pelvisMat
+                0.15f * p.hipWidth.coerceAtLeast(0.85f) * ch.scale, pelvisMat
             )
         )
 
         // Spine
         val spineMat = applyJoint(pelvisMat, Vec3(0f, 0.14f, 0f), JointId.SPINE)
-        addSegment(spineMat, 0.16f * legLenScale, 0.105f * p.shoulderWidth, 0.080f * p.chestDepth, baseColor, isJointHighlighted(JointId.SPINE))
+        addSegment(spineMat, 0.16f * legLenScale, 0.105f * p.shoulderWidth, 0.080f * p.chestDepth, baseColor, isJointHighlighted(JointId.SPINE), limbMeshKey)
         picks.add(
             PickBoneVolume(
                 ch.id, SelectedPart.CONTROL, JointId.SPINE,
                 Math3D.transformPoint(spineMat, Vec3(0f, 0.08f, 0f)),
-                0.12f * ch.scale, spineMat
+                0.12f * pickBulk * ch.scale, spineMat
             )
         )
 
         // Chest
         val chestMat = applyJoint(spineMat, Vec3(0f, 0.16f * legLenScale, 0f), JointId.CHEST)
-        addSegment(chestMat, 0.22f * legLenScale, 0.135f * p.shoulderWidth, 0.095f * p.chestDepth, wearColor, isJointHighlighted(JointId.CHEST))
+        addSegment(chestMat, 0.22f * legLenScale, 0.135f * p.shoulderWidth, 0.095f * p.chestDepth, wearColor, isJointHighlighted(JointId.CHEST), torsoMeshKey)
         picks.add(
             PickBoneVolume(
                 ch.id, SelectedPart.CONTROL, JointId.CHEST,
                 Math3D.transformPoint(chestMat, Vec3(0f, 0.11f, 0f)),
-                0.14f * ch.scale, chestMat
+                0.14f * p.shoulderWidth.coerceAtLeast(0.85f) * ch.scale, chestMat
             )
         )
 
         // Neck & Head
         val neckMat = applyJoint(chestMat, Vec3(0f, 0.22f * legLenScale, 0f), JointId.NECK)
-        addSegment(neckMat, 0.08f, 0.042f * p.limbThickness, 0.042f * p.limbThickness, baseColor, isJointHighlighted(JointId.NECK))
+        addSegment(neckMat, 0.08f, 0.042f * p.limbThickness, 0.042f * p.limbThickness, baseColor, isJointHighlighted(JointId.NECK), limbMeshKey)
 
         val headMat = applyJoint(neckMat, Vec3(0f, 0.075f, 0f), JointId.HEAD)
         val headScaled = Math3D.scale(headMat, p.headScale, p.headScale, p.headScale)
         val headHighlight = isJointHighlighted(JointId.HEAD, SelectedPart.HEAD) || isJointHighlighted(JointId.HEAD, SelectedPart.HAIR)
-        items.add(RenderItem(RenderMeshKey.HEAD, null, headScaled, baseColor, headHighlight))
+        items.add(RenderItem(headMeshKey, null, headScaled, baseColor, headHighlight))
         if (ch.hairStyle != HairStyle.NAKED) {
             items.add(RenderItem(RenderMeshKey.HEAD, ch.hairStyle, headScaled, ch.hairColor, headHighlight))
         }
@@ -195,23 +238,23 @@ object SkeletonBuilder {
             val shoulderMat = applyJoint(chestMat, Vec3(shoulderOffsetX, 0.19f * legLenScale, 0f), shoulderId)
             val upperMat = applyJoint(shoulderMat, Vec3(0f, 0f, 0f), upperId)
             addJointBall(upperMat, 0.045f * p.limbThickness, isJointHighlighted(upperId))
-            addSegment(upperMat, -0.25f * legLenScale, 0.042f * p.limbThickness, 0.042f * p.limbThickness, baseColor, isJointHighlighted(upperId))
+            addSegment(upperMat, -0.25f * legLenScale, 0.042f * p.limbThickness, 0.042f * p.limbThickness, baseColor, isJointHighlighted(upperId), limbMeshKey)
             picks.add(
                 PickBoneVolume(
                     ch.id, SelectedPart.CONTROL, upperId,
                     Math3D.transformPoint(upperMat, Vec3(0f, -0.12f * legLenScale, 0f)),
-                    0.075f * ch.scale, upperMat
+                    0.075f * pickBulk * ch.scale, upperMat
                 )
             )
 
             val foreMat = applyJoint(upperMat, Vec3(0f, -0.25f * legLenScale, 0f), foreId)
             addJointBall(foreMat, 0.036f * p.limbThickness, isJointHighlighted(foreId))
-            addSegment(foreMat, -0.23f * legLenScale, 0.035f * p.limbThickness, 0.035f * p.limbThickness, baseColor, isJointHighlighted(foreId))
+            addSegment(foreMat, -0.23f * legLenScale, 0.035f * p.limbThickness, 0.035f * p.limbThickness, baseColor, isJointHighlighted(foreId), limbMeshKey)
             picks.add(
                 PickBoneVolume(
                     ch.id, SelectedPart.CONTROL, foreId,
                     Math3D.transformPoint(foreMat, Vec3(0f, -0.11f * legLenScale, 0f)),
-                    0.07f * ch.scale, foreMat
+                    0.07f * pickBulk * ch.scale, foreMat
                 )
             )
 
@@ -248,23 +291,23 @@ object SkeletonBuilder {
 
             val thighMat = applyJoint(pelvisMat, Vec3(side * 0.088f * p.hipWidth, 0.01f, 0f), thighId)
             addJointBall(thighMat, 0.056f * p.limbThickness, isJointHighlighted(thighId))
-            addSegment(thighMat, -0.40f * legLenScale, 0.062f * p.limbThickness, 0.064f * p.limbThickness, baseColor, isJointHighlighted(thighId))
+            addSegment(thighMat, -0.40f * legLenScale, 0.062f * p.limbThickness, 0.064f * p.limbThickness, baseColor, isJointHighlighted(thighId), limbMeshKey)
             picks.add(
                 PickBoneVolume(
                     ch.id, SelectedPart.CONTROL, thighId,
                     Math3D.transformPoint(thighMat, Vec3(0f, -0.20f * legLenScale, 0f)),
-                    0.09f * ch.scale, thighMat
+                    0.09f * pickBulk * ch.scale, thighMat
                 )
             )
 
             val shinMat = applyJoint(thighMat, Vec3(0f, -0.40f * legLenScale, 0f), shinId)
             addJointBall(shinMat, 0.044f * p.limbThickness, isJointHighlighted(shinId))
-            addSegment(shinMat, -0.40f * legLenScale, 0.046f * p.limbThickness, 0.048f * p.limbThickness, baseColor, isJointHighlighted(shinId))
+            addSegment(shinMat, -0.40f * legLenScale, 0.046f * p.limbThickness, 0.048f * p.limbThickness, baseColor, isJointHighlighted(shinId), limbMeshKey)
             picks.add(
                 PickBoneVolume(
                     ch.id, SelectedPart.CONTROL, shinId,
                     Math3D.transformPoint(shinMat, Vec3(0f, -0.20f * legLenScale, 0f)),
-                    0.085f * ch.scale, shinMat
+                    0.085f * pickBulk * ch.scale, shinMat
                 )
             )
 

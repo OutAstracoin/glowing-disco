@@ -4,26 +4,35 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessibilityNew
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -34,19 +43,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.i18n.StudioStrings
 import com.example.model.CharacterType
 import com.example.model.HairStyle
 import com.example.model.PosePresets
+import com.example.model.PropCategory
 import com.example.model.PropType
+import com.example.model.SavedStance
 import com.example.ui.theme.StudioBorder
 import com.example.ui.theme.StudioCyan
 import com.example.ui.theme.StudioCyanContainer
 import com.example.ui.theme.StudioSurfaceElevated
 import com.example.ui.theme.StudioSurfaceSolid
 import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun SideMenuHeader(
@@ -111,6 +126,7 @@ fun AddObjectMenuContent(
             onClick = { unfoldedSection = if (unfoldedSection == 1) -1 else 1 }
         )
         AnimatedVisibility(visible = unfoldedSection == 1) {
+            val shapeProps = remember { PropType.entries.filter { it.category == PropCategory.SHAPE } }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -120,7 +136,7 @@ fun AddObjectMenuContent(
                     .fillMaxWidth()
                     .heightIn(max = 320.dp)
             ) {
-                items(PropType.entries) { prop ->
+                items(shapeProps) { prop ->
                     StudioItemCard(
                         assetPath = prop.assetPath,
                         label = prop.label(strings),
@@ -201,10 +217,38 @@ fun ReplaceModelMenuContent(
 @Composable
 fun PosePresetMenuContent(
     strings: StudioStrings,
-    onApplyPose: (Int) -> Unit
+    savedStances: List<SavedStance>,
+    activePoseId: String?,
+    onApplyPose: (Int) -> Unit,
+    onSaveCurrentStance: () -> Unit,
+    onApplySavedStance: (String) -> Unit,
+    onDeleteSavedStance: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SideMenuHeader(title = strings.posePresets)
+        SideMenuHeader(title = strings.quickPoses)
+        OutlinedButton(
+            onClick = onSaveCurrentStance,
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, StudioCyan),
+            modifier = Modifier
+                .fillMaxWidth()
+                .minimumInteractiveComponentSize()
+                .testTag("save_current_stance_button")
+        ) {
+            Icon(
+                imageVector = Icons.Filled.BookmarkAdd,
+                contentDescription = null,
+                tint = StudioCyan,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = strings.saveCurrentPose,
+                style = MaterialTheme.typography.labelMedium,
+                color = StudioCyan
+            )
+        }
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -212,78 +256,86 @@ fun PosePresetMenuContent(
             contentPadding = PaddingValues(vertical = 4.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 380.dp)
+                .heightIn(max = 360.dp)
+                .testTag("quick_poses_grid")
         ) {
-            items(PosePresets.bodyPoses) { pose ->
+            if (savedStances.isNotEmpty()) {
+                item(span = { GridItemSpan(2) }) {
+                    Text(
+                        text = strings.savedStances,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                    )
+                }
+                items(savedStances, key = { it.id }) { stance ->
+                    val isSelected = activePoseId == stance.id
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) StudioCyanContainer else StudioSurfaceSolid
+                        ),
+                        border = BorderStroke(
+                            if (isSelected) 2.dp else 1.dp,
+                            if (isSelected) StudioCyan else StudioBorder
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("saved_stance_${stance.id}")
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onApplySavedStance(stance.id) }
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1.2f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AccessibilityNew,
+                                    contentDescription = stance.name,
+                                    tint = if (isSelected) StudioCyan else TextSecondary,
+                                    modifier = Modifier.size(34.dp)
+                                )
+                                IconButton(
+                                    onClick = { onDeleteSavedStance(stance.id) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .minimumInteractiveComponentSize()
+                                        .testTag("delete_stance_${stance.id}")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = strings.remove,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = stance.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isSelected) StudioCyan else TextPrimary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(PosePresets.bodyPoses, key = { it.index }) { pose ->
                 StudioItemCard(
                     assetPath = pose.assetPath,
-                    label = "#${pose.index + 1}",
+                    label = pose.name,
+                    selected = activePoseId == "preset_${pose.index}",
                     testTag = "body_pose_${pose.index}",
                     onClick = { onApplyPose(pose.index) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun HandPoseMenuContent(
-    strings: StudioStrings,
-    leftSelected: Boolean,
-    onSelectSide: (Boolean) -> Unit,
-    onApplyHandPose: (Int, Boolean) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SideMenuHeader(title = strings.handPose)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Button(
-                onClick = { onSelectSide(true) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (leftSelected) StudioCyan else StudioSurfaceSolid,
-                    contentColor = if (leftSelected) MaterialTheme.colorScheme.onPrimary else TextPrimary
-                ),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .minimumInteractiveComponentSize()
-                    .testTag("hand_side_left_button")
-            ) {
-                Text(strings.left, style = MaterialTheme.typography.labelMedium)
-            }
-            Button(
-                onClick = { onSelectSide(false) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!leftSelected) StudioCyan else StudioSurfaceSolid,
-                    contentColor = if (!leftSelected) MaterialTheme.colorScheme.onPrimary else TextPrimary
-                ),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .minimumInteractiveComponentSize()
-                    .testTag("hand_side_right_button")
-            ) {
-                Text(strings.right, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-        Spacer(modifier = Modifier.height(2.dp))
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 340.dp)
-        ) {
-            items(PosePresets.handPoses) { pose ->
-                StudioItemCard(
-                    assetPath = pose.assetPath,
-                    label = "#${pose.index + 1}",
-                    testTag = "hand_pose_${pose.index}",
-                    onClick = { onApplyHandPose(pose.index, leftSelected) }
                 )
             }
         }

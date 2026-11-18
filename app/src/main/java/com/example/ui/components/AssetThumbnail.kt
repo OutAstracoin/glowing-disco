@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.ui.theme.StudioBorder
+import com.example.ui.theme.StudioCyan
+import com.example.ui.theme.StudioCyanContainer
 import com.example.ui.theme.StudioSurfaceSolid
 import com.example.ui.theme.TextPrimary
 import kotlinx.coroutines.Dispatchers
@@ -98,11 +100,14 @@ fun StudioItemCard(
     label: String?,
     testTag: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selected: Boolean = false
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = StudioSurfaceSolid),
-        border = BorderStroke(1.dp, StudioBorder),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) StudioCyanContainer else StudioSurfaceSolid
+        ),
+        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) StudioCyan else StudioBorder),
         shape = RoundedCornerShape(10.dp),
         modifier = modifier
             .fillMaxWidth()
@@ -122,7 +127,7 @@ fun StudioItemCard(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextPrimary,
+                    color = if (selected) StudioCyan else TextPrimary,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

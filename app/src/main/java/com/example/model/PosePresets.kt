@@ -2,6 +2,7 @@ package com.example.model
 
 data class BodyPosePreset(
     val index: Int,
+    val name: String,
     val assetPath: String,
     val pelvisOffsetY: Float,
     val jointRotations: Map<JointId, Vec3>
@@ -9,15 +10,45 @@ data class BodyPosePreset(
 
 data class HandPosePreset(
     val index: Int,
+    val name: String,
     val assetPath: String,
     val fingerState: HandFingerState
 )
 
 object PosePresets {
 
+    private val poseNames = listOf(
+        "Natural Stand",
+        "Contrapposto",
+        "Walk Stride",
+        "Dynamic Sprint",
+        "Seated Relaxed",
+        "Cross-Leg Sit",
+        "Action Crouch",
+        "Mid-Air Leap",
+        "Wave Hello",
+        "Martial Guard",
+        "High Kick",
+        "Knee Kneel",
+        "Hero Hips",
+        "Arms Crossed",
+        "Sword Swing",
+        "Point Forward",
+        "Idol Stage",
+        "Archer Draw",
+        "Thinking Pose",
+        "Hero Landing",
+        "Floating",
+        "Back Glance",
+        "Polite Bow",
+        "Side Lunge",
+        "T-Pose"
+    )
+
     val bodyPoses: List<BodyPosePreset> = List(25) { idx ->
         val num = idx.toString().padStart(2, '0')
         val path = "imgs/body_poses/image_$num.png"
+        val poseName = poseNames.getOrElse(idx) { "Pose #${idx + 1}" }
         val (pelvisY, joints) = when (idx) {
             0 -> 0f to mapOf( // Natural standing A-pose
                 JointId.L_UPPER_ARM to Vec3(0f, 0f, -14f),
@@ -308,12 +339,36 @@ object PosePresets {
                 JointId.R_UPPER_ARM to Vec3(0f, 0f, 82f)
             )
         }
-        BodyPosePreset(idx, path, pelvisY, joints)
+        BodyPosePreset(idx, poseName, path, pelvisY, joints)
     }
+
+    private val handPoseNames = listOf(
+        "Open Wide",
+        "Relaxed",
+        "Closed Fist",
+        "Point Index",
+        "Peace V",
+        "Three Fingers",
+        "Four Fingers",
+        "Thumbs Up",
+        "OK Pinch",
+        "Rock On",
+        "Finger Gun",
+        "Cupped Hold",
+        "Claw",
+        "Flat Blade",
+        "Light Grip",
+        "Tight Grip",
+        "Graceful",
+        "Pen Hold",
+        "Shaka",
+        "Cascade"
+    )
 
     val handPoses: List<HandPosePreset> = List(30) { idx ->
         val frame = (idx * 5).toString().padStart(4, '0')
         val path = "imgs/hand_poses/man_hand.$frame.jpg"
+        val gestureName = handPoseNames.getOrElse(idx) { "Grip #${idx - 19}" }
         val state = when (idx) {
             0 -> HandFingerState(0.05f, 0.05f, 0.05f, 0.05f, 0.05f, 0.5f) // Open wide
             1 -> HandFingerState(0.15f, 0.12f, 0.14f, 0.18f, 0.22f, 0.15f) // Relaxed
@@ -347,7 +402,7 @@ object PosePresets {
                 )
             }
         }
-        HandPosePreset(idx, path, state)
+        HandPosePreset(idx, gestureName, path, state)
     }
 
     val materialSwatches: List<RgbColor> = listOf(
@@ -389,6 +444,72 @@ object PosePresets {
         hex("#c68642"),
         hex("#8d5524")
     )
+
+    val bodyShapePresets: List<BodyShapePreset> = listOf(
+        BodyShapePreset(
+            id = "organic_standard",
+            meshStyle = BodyMeshStyle.ORGANIC,
+            proportions = BodyProportions(1.00f, 0.96f, 0.94f, 1.00f, 0.94f, 0.94f),
+            accentHex = 0xFF38BDF8L
+        ),
+        BodyShapePreset(
+            id = "planar_bridgman",
+            meshStyle = BodyMeshStyle.PLANAR,
+            proportions = BodyProportions(1.02f, 1.08f, 0.92f, 0.98f, 0.98f, 1.02f),
+            accentHex = 0xFFF59E0BL
+        ),
+        BodyShapePreset(
+            id = "wooden_cylinder",
+            meshStyle = BodyMeshStyle.CYLINDRICAL,
+            proportions = BodyProportions(1.00f, 0.98f, 0.92f, 1.00f, 0.92f, 0.94f),
+            accentHex = 0xFFD97706L
+        ),
+        BodyShapePreset(
+            id = "sculpted_heroic",
+            meshStyle = BodyMeshStyle.SCULPTED,
+            proportions = BodyProportions(1.08f, 1.24f, 0.94f, 0.94f, 1.18f, 1.14f),
+            accentHex = 0xFFFB7185L
+        ),
+        BodyShapePreset(
+            id = "robotic_mecha",
+            meshStyle = BodyMeshStyle.ROBOTIC,
+            proportions = BodyProportions(1.06f, 1.18f, 0.98f, 0.96f, 1.08f, 1.10f),
+            accentHex = 0xFF818CF8L
+        ),
+        BodyShapePreset(
+            id = "organic_curvy",
+            meshStyle = BodyMeshStyle.ORGANIC,
+            proportions = BodyProportions(0.98f, 0.88f, 1.18f, 0.98f, 0.94f, 1.08f),
+            accentHex = 0xFFF472B6L
+        ),
+        BodyShapePreset(
+            id = "sculpted_slender",
+            meshStyle = BodyMeshStyle.SCULPTED,
+            proportions = BodyProportions(1.12f, 0.84f, 0.86f, 0.92f, 0.78f, 0.82f),
+            accentHex = 0xFF2DD4BFL
+        ),
+        BodyShapePreset(
+            id = "planar_heavy",
+            meshStyle = BodyMeshStyle.PLANAR,
+            proportions = BodyProportions(1.04f, 1.32f, 1.18f, 0.92f, 1.30f, 1.28f),
+            accentHex = 0xFFFB923CL
+        ),
+        BodyShapePreset(
+            id = "organic_chibi",
+            meshStyle = BodyMeshStyle.ORGANIC,
+            proportions = BodyProportions(0.78f, 0.92f, 0.96f, 1.36f, 0.92f, 0.94f),
+            accentHex = 0xFFA78BFAL
+        ),
+        BodyShapePreset(
+            id = "cylindrical_petite",
+            meshStyle = BodyMeshStyle.CYLINDRICAL,
+            proportions = BodyProportions(0.90f, 0.84f, 0.90f, 1.06f, 0.82f, 0.86f),
+            accentHex = 0xFF34D399L
+        )
+    )
+
+    fun bodyShapePresetById(id: String?): BodyShapePreset? =
+        if (id == null) null else bodyShapePresets.firstOrNull { it.id == id }
 
     private fun hex(s: String): RgbColor {
         val clean = s.removePrefix("#")

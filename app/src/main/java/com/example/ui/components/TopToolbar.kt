@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BackHand
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Chair
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -30,9 +32,12 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.OpenWith
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.DropdownMenu
@@ -93,6 +98,7 @@ fun TopToolbar(
     onToggleManipulator: () -> Unit,
     onDuplicate: () -> Unit,
     onRemove: () -> Unit,
+    onTogglePlaceholder3D: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isLocked = uiState.selectedCharacter?.locked == true || uiState.selectedProp?.locked == true
@@ -135,6 +141,7 @@ fun TopToolbar(
                 label = strings.undo,
                 contentDesc = stringResource(R.string.cd_undo),
                 enabled = uiState.canUndo,
+                badgeCount = uiState.undoCount,
                 testTag = "tool_undo_button",
                 onClick = onUndo
             )
@@ -144,6 +151,7 @@ fun TopToolbar(
                 label = strings.redo,
                 contentDesc = stringResource(R.string.cd_redo),
                 enabled = uiState.canRedo,
+                badgeCount = uiState.redoCount,
                 testTag = "tool_redo_button",
                 onClick = onRedo
             )
@@ -203,7 +211,7 @@ fun TopToolbar(
             }
         }
 
-        // View Settings dropdown
+        // View Settings dropdown & Camera Control Panel button
         ToolbarGroup {
             var viewExpanded by remember { mutableStateOf(false) }
             Box {
@@ -211,7 +219,7 @@ fun TopToolbar(
                     icon = Icons.Filled.ViewInAr,
                     label = strings.view,
                     contentDesc = stringResource(R.string.cd_view_settings),
-                    active = viewExpanded || uiState.sideMenu == SideMenu.PERSPECTIVE_MENU,
+                    active = viewExpanded,
                     testTag = "tool_view_button",
                     onClick = { viewExpanded = true }
                 )
@@ -226,18 +234,19 @@ fun TopToolbar(
                         onClick = { onFrameSelected(); viewExpanded = false }
                     )
                     DropdownMenuItem(
-                        text = { Text(strings.perspective, color = TextPrimary) },
+                        text = { Text(strings.cameraControls, color = TextPrimary) },
                         modifier = Modifier.testTag("menu_view_perspective"),
-                        onClick = { onToggleMenu(SideMenu.PERSPECTIVE_MENU); viewExpanded = false }
+                        onClick = { onToggleMenu(SideMenu.CAMERA_MENU); viewExpanded = false }
                     )
                     HorizontalDivider(color = StudioBorder)
                     val presets = listOf(
-                        CameraPreset.LEFT to strings.left,
-                        CameraPreset.RIGHT to strings.right,
-                        CameraPreset.BOTTOM to strings.bottom,
-                        CameraPreset.TOP to strings.top,
                         CameraPreset.FRONT to strings.front,
-                        CameraPreset.BACK to strings.back
+                        CameraPreset.RIGHT to strings.sideView,
+                        CameraPreset.LEFT to strings.sideLeftView,
+                        CameraPreset.TOP to strings.top,
+                        CameraPreset.ISOMETRIC to strings.isometric,
+                        CameraPreset.BACK to strings.back,
+                        CameraPreset.BOTTOM to strings.bottom
                     )
                     presets.forEach { (preset, label) ->
                         DropdownMenuItem(
@@ -248,6 +257,75 @@ fun TopToolbar(
                     }
                 }
             }
+            ToolDivider()
+            ToolButtonItem(
+                icon = Icons.Filled.Videocam,
+                label = strings.camera,
+                contentDesc = stringResource(R.string.cd_camera_controls),
+                active = uiState.sideMenu == SideMenu.CAMERA_MENU,
+                testTag = "tool_camera_button",
+                onClick = { onToggleMenu(SideMenu.CAMERA_MENU) }
+            )
+        }
+
+        // Quick Poses, Body Shapes, Hands, Props & Scene Lighting direct studio shortcuts
+        ToolbarGroup {
+            ToolButtonItem(
+                icon = Icons.Filled.AccessibilityNew,
+                label = strings.preset,
+                contentDesc = stringResource(R.string.cd_quick_poses),
+                active = uiState.sideMenu == SideMenu.POSE_PRESET_MENU,
+                testTag = "tool_quick_poses_button",
+                onClick = { onToggleMenu(SideMenu.POSE_PRESET_MENU) }
+            )
+            ToolDivider()
+            ToolButtonItem(
+                icon = Icons.Filled.Person,
+                label = strings.bodyShape,
+                contentDesc = stringResource(R.string.cd_body_shape),
+                active = uiState.sideMenu == SideMenu.BODY_SHAPE_MENU,
+                testTag = "tool_body_shape_shortcut_button",
+                onClick = { onToggleMenu(SideMenu.BODY_SHAPE_MENU) }
+            )
+            ToolDivider()
+            ToolButtonItem(
+                icon = Icons.Filled.BackHand,
+                label = strings.hand,
+                contentDesc = stringResource(R.string.cd_hand_poses),
+                active = uiState.sideMenu == SideMenu.HAND_MENU,
+                testTag = "tool_hands_shortcut_button",
+                onClick = { onToggleMenu(SideMenu.HAND_MENU) }
+            )
+            ToolDivider()
+            ToolButtonItem(
+                icon = Icons.Filled.Chair,
+                label = strings.propsDrawer,
+                contentDesc = stringResource(R.string.cd_props),
+                active = uiState.sideMenu == SideMenu.PROPS_MENU,
+                testTag = "tool_props_button",
+                onClick = { onToggleMenu(SideMenu.PROPS_MENU) }
+            )
+            ToolDivider()
+            ToolButtonItem(
+                icon = Icons.Filled.WbSunny,
+                label = strings.lightLabel,
+                contentDesc = stringResource(R.string.cd_lighting),
+                active = uiState.sideMenu == SideMenu.BRIGHTNESS_MENU,
+                testTag = "tool_lighting_button",
+                onClick = { onToggleMenu(SideMenu.BRIGHTNESS_MENU) }
+            )
+        }
+
+        // Compose 3D Placeholder Geometric Viewer button
+        ToolbarGroup {
+            ToolButtonItem(
+                icon = Icons.Filled.Category,
+                label = strings.placeholder3d,
+                contentDesc = stringResource(R.string.cd_placeholder_3d),
+                active = uiState.showComposePlaceholderViewer,
+                testTag = "tool_placeholder_3d_button",
+                onClick = onTogglePlaceholder3D
+            )
         }
 
         // Contextual ObjectToolGroup matching ObjectToolGroup.js
@@ -255,6 +333,24 @@ fun TopToolbar(
             SelectedPart.NOTHING -> Unit
             SelectedPart.CONTROL, SelectedPart.FINGER, SelectedPart.HAND -> {
                 ToolbarGroup {
+                    ToolButtonItem(
+                        icon = Icons.Filled.Tune,
+                        label = strings.joints,
+                        contentDesc = stringResource(R.string.cd_joints),
+                        active = uiState.sideMenu == SideMenu.JOINT_MENU,
+                        testTag = "tool_joints_button",
+                        onClick = { onToggleMenu(SideMenu.JOINT_MENU) }
+                    )
+                    ToolDivider()
+                    ToolButtonItem(
+                        icon = Icons.Filled.BackHand,
+                        label = strings.hand,
+                        contentDesc = stringResource(R.string.cd_hand_poses),
+                        active = uiState.sideMenu == SideMenu.HAND_MENU,
+                        testTag = "tool_hand_button",
+                        onClick = onToggleHandMode
+                    )
+                    ToolDivider()
                     ToolButtonItem(
                         icon = Icons.Filled.Sync,
                         label = strings.rotate,
@@ -304,6 +400,15 @@ fun TopToolbar(
                         active = uiState.sideMenu == SideMenu.HAIR_MENU,
                         testTag = "tool_hair_button",
                         onClick = { onToggleMenu(SideMenu.HAIR_MENU) }
+                    )
+                    ToolDivider()
+                    ToolButtonItem(
+                        icon = Icons.Filled.Tune,
+                        label = strings.joints,
+                        contentDesc = stringResource(R.string.cd_joints),
+                        active = uiState.sideMenu == SideMenu.JOINT_MENU,
+                        testTag = "tool_joints_button",
+                        onClick = { onToggleMenu(SideMenu.JOINT_MENU) }
                     )
                     ToolDivider()
                     ToolButtonItem(
@@ -428,6 +533,24 @@ fun TopToolbar(
                     )
                     ToolDivider()
                     ToolButtonItem(
+                        icon = Icons.Filled.Person,
+                        label = strings.bodyShape,
+                        contentDesc = stringResource(R.string.cd_body_shape),
+                        active = uiState.sideMenu == SideMenu.BODY_SHAPE_MENU,
+                        testTag = "tool_body_shape_button",
+                        onClick = { onToggleMenu(SideMenu.BODY_SHAPE_MENU) }
+                    )
+                    ToolDivider()
+                    ToolButtonItem(
+                        icon = Icons.Filled.Tune,
+                        label = strings.joints,
+                        contentDesc = stringResource(R.string.cd_joints),
+                        active = uiState.sideMenu == SideMenu.JOINT_MENU,
+                        testTag = "tool_joints_button",
+                        onClick = { onToggleMenu(SideMenu.JOINT_MENU) }
+                    )
+                    ToolDivider()
+                    ToolButtonItem(
                         icon = Icons.Filled.BackHand,
                         label = strings.hand,
                         contentDesc = stringResource(R.string.cd_hand_poses),
@@ -499,6 +622,7 @@ private fun ToolButtonItem(
     testTag: String,
     active: Boolean = false,
     enabled: Boolean = true,
+    badgeCount: Int = 0,
     onClick: () -> Unit
 ) {
     val bg = if (active) StudioCyanContainer else androidx.compose.ui.graphics.Color.Transparent
@@ -508,9 +632,7 @@ private fun ToolButtonItem(
         else -> TextPrimary
     }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    Box(
         modifier = Modifier
             .minimumInteractiveComponentSize()
             .width(56.dp)
@@ -522,20 +644,36 @@ private fun ToolButtonItem(
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDesc,
-            tint = fg,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = fg,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDesc,
+                tint = fg,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = fg,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (badgeCount > 0) {
+            Text(
+                text = badgeCount.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = StudioCyan,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 2.dp)
+            )
+        }
     }
 }
 
